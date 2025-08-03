@@ -1,0 +1,59 @@
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Erlang/OTP
+*.beam
+*.plt
+erl_crash.dump
+.erlang.cookie
+.rebar3
+_build/
+_checkouts/
+_vendor/
+rebar3.crashdump
+*~
+
+# Editor files
+.idea/
+*.swp
+*.swo
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+/tmp/
+/priv/
+*.log
+logs/
+
+# Documentation
+/doc/
+/docs/
+
+# Dependencies
+deps/
+node_modules/
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+.cargo/
+
+# Benchmark results
+benchmark_results/
+*.bench
+
+# Coverage
+cover/
+*.coverdata
+
+# Misc
+.env
+.env.local

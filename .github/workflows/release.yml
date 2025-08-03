@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: libbobsled.so
+            asset_name: libbobsled-linux-amd64.so
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: libbobsled.dylib
+            asset_name: libbobsled-darwin-amd64.dylib
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: libbobsled.dylib
+            asset_name: libbobsled-darwin-arm64.dylib
+            
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.target }}
+        override: true
+        
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+      
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
+        overwrite: true

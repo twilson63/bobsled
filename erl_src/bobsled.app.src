@@ -1,0 +1,15 @@
+{application, bobsled,
+ [
+  {description, "High-performance Erlang NIF for sled embedded database"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []},
+  {modules, [bobsled]},
+  {maintainers, ["Bobsled Team"]},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

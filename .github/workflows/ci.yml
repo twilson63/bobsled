@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        otp: ['24', '25', '26']
+        rust: [stable]
+        
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Set up Erlang/OTP
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ matrix.otp }}
+        
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        
+    - name: Build
+      run: make compile
+      
+    - name: Check Rust formatting
+      run: cargo fmt -- --check
+      
+    - name: Run Clippy
+      run: cargo clippy -- -D warnings
+      
+    - name: Run Rust tests
+      run: cargo test --verbose
+      
+    - name: Run Erlang tests
+      run: |
+        chmod +x run_eunit_tests.escript
+        ./run_eunit_tests.escript
+        
+    - name: Run benchmarks (smoke test)
+      run: |
+        chmod +x benchmark_100k.escript
+        ./benchmark_100k.escript
+      if: matrix.os == 'ubuntu-latest' && matrix.otp == '26'
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        
+    - name: Set up Erlang/OTP
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: '26'
+        
+    - name: Install cargo-tarpaulin
+      run: cargo install cargo-tarpaulin
+      
+    - name: Run coverage
+      run: cargo tarpaulin --out Xml
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./cobertura.xml
