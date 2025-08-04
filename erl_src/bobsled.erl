@@ -260,10 +260,13 @@ compare_and_swap(DbHandle, Key, OldValue, NewValue)
 compare_and_swap(DbHandle, Key, OldValue, NewValue) ->
     {error, {badarg, {DbHandle, Key, OldValue, NewValue}}}.
 
-%% @doc List all keys with a given prefix.
+%% @doc List direct children of a given prefix.
 %%
-%% Returns all keys that start with the specified prefix. This operation
-%% uses sled's efficient range queries for optimal performance.
+%% Returns only the direct children under the prefix, not the full paths.
+%% Similar to listing files in a directory. For example:
+%% - Keys: "dir/file1", "dir/file2", "dir/subdir/file3"
+%% - list(Db, <<"dir/">>) returns: [<<"file1">>, <<"file2">>, <<"subdir/">>]
+%% This matches the elmdb-rs behavior for hierarchical key organization.
 %%
 %% == Example ==
 %% ```

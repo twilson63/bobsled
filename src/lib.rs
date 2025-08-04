@@ -2,6 +2,7 @@ use rustler::{Atom, Binary, Env, Term, ResourceArc, OwnedBinary, NifResult, Erro
 use sled::{Db, Config, Mode, IVec};
 use std::panic::{RefUnwindSafe, catch_unwind};
 use std::sync::{Arc, RwLock};
+use std::collections::HashSet;
 
 mod atoms;
 
@@ -263,22 +264,52 @@ fn nif_compare_and_swap<'a>(env: Env<'a>, db_resource: ResourceArc<DbHandle>, ke
     }
 }
 
-// List keys with prefix
+// List direct children of a prefix (like elmdb-rs)
+// Returns only the next path segment after the prefix, without duplicates
 #[rustler::nif]
 fn nif_list<'a>(env: Env<'a>, db_resource: ResourceArc<DbHandle>, prefix: Binary) -> NifResult<(Atom, Vec<Binary<'a>>)> {
     safe_execute(|| {
         check_db_open(&db_resource)?;
-        let mut keys = Vec::new();
+        let mut children = std::collections::HashSet::new();
+        let prefix_slice = prefix.as_slice();
+        let prefix_len = prefix_slice.len();
         
-        for result in db_resource.db.scan_prefix(prefix.as_slice()) {
+        for result in db_resource.db.scan_prefix(prefix_slice) {
             let (key, _) = result?;
-            let mut owned = OwnedBinary::new(key.len()).unwrap();
-            owned.as_mut_slice().copy_from_slice(&key);
-            let binary = Binary::from_owned(owned, env);
-            keys.push(binary);
+            
+            // Skip the prefix itself
+            if key.len() <= prefix_len {
+                continue;
+            }
+            
+            // Get the part after the prefix
+            let remainder = &key[prefix_len..];
+            
+            // Find the next path separator (/) if any
+            let child = if let Some(pos) = remainder.iter().position(|&b| b == b'/') {
+                // Include the separator to match elmdb behavior
+                &remainder[..=pos]
+            } else {
+                // No separator, this is a direct child file/key
+                remainder
+            };
+            
+            children.insert(child.to_vec());
         }
         
-        Ok((atoms::ok(), keys))
+        // Convert HashSet to Vec of Binaries
+        let mut result = Vec::new();
+        for child in children {
+            let mut owned = OwnedBinary::new(child.len()).unwrap();
+            owned.as_mut_slice().copy_from_slice(&child);
+            let binary = Binary::from_owned(owned, env);
+            result.push(binary);
+        }
+        
+        // Sort for consistent ordering
+        result.sort_by(|a, b| a.as_slice().cmp(b.as_slice()));
+        
+        Ok((atoms::ok(), result))
     })
 }
 
